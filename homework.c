@@ -6,36 +6,34 @@
 #include <limits.h>
 #include <math.h>
 
-struct sigaction psa;
 
 struct prime{
 	unsigned int next;
+	unsigned int max;
 	int increment;
 };
 
-void next_prime(struct prime* number){
-	if ( ! number ){
-		fprintf(stderr, "ERROR: invalid input\n");
-		exit(0);
-	}
+struct prime number;
+
+void next_prime(){
 	// should always be incrementing by 2 up or down
-	if (!(number->increment == 2) && !(number->increment == -2)){
+	if (!(number.increment == 2) && !(number.increment == -2)){
 		fprintf(stderr, "ERROR: invalid increment\n");
 		exit(0);
 	}
 	//TODO check to ensure increasing numbers
-	if (number->next < 2){
-		number->next = 2;
+	if (number.next < 2){
+		number.next = 2;
 		return;
-	}else if ( number->next == 2){
-		number->next = 3;
+	}else if ( number.next == 2){
+		number.next = 3;
 		return;
 	}
-	unsigned int temp = number->next+=number->increment;
+	unsigned int temp = number.next+=number.increment;
 
 	unsigned int check;
 
-	for(;temp < UINT_MAX && temp >= 2; temp+=number->increment){
+	for(;temp < number.max && temp >= 2; temp+=number.increment){
 		// increment temp up or down depending on the setting in struct
 		check = (unsigned int)sqrt((double)temp); // can start checking at square root
 		if (! check & 1){
@@ -44,16 +42,14 @@ void next_prime(struct prime* number){
 		}
 		for(; check > 0; check--){ // even numbers are not prime
 			if( check == 1){ // temp is prime
-				number->next = temp;
+				number.next = temp;
 				return;
 			}
 			int prime = temp % check;
-			printf("temp is %d, check is %d, prime is %d\n", temp, check, prime);
+			//printf("temp is %d, check is %d, prime is %d\n", temp, check, prime);
 			if ( ! prime ){ //temp is divisible by check -- not prime
 				break;
 			}
-
-			sleep(1);
 		}
 	}
 	fprintf(stderr, "ERROR: next number is out of bounds \n");
@@ -69,14 +65,18 @@ void handler(int signum, siginfo_t *siginfo, void* context){
 	switch (signum){
 		case SIGHUP:
 			printf("HERE");
+			number.next = 1;
+			next_prime();
 			fflush(stdout);
 			break;
 		case SIGUSR1:
 			printf("nope");
+			next_prime();
 			fflush(stdout);
 			break;
 		case SIGUSR2:
 			printf("not gonna do it");
+			number.increment = number.increment * -1;
 			fflush(stdout);
 			break;
 	}
@@ -85,32 +85,35 @@ void handler(int signum, siginfo_t *siginfo, void* context){
 
 
 int main(int argc, char* argv[]){
+	memset(&number, '\0', sizeof(number));
+	number.next = 1;
+	number.increment = 2;
+	number.max = UINT_MAX;
 	int opt;
 	while ((opt = getopt(argc, argv, "s:e:r:")) != -1){
 		switch (opt){
 		case 's':
 			printf("S option used %d\n", atoi(optarg));
+			number.next = atoi(optarg);
 			break;
 		case 'e':
 			printf("E option used %d\n", atoi(optarg));
+			number.max = atoi(optarg);
 			break;
 		case 'r':
 			printf("R option used %d\n", atoi(optarg));
+			number.next = atoi(optarg);
+			number.increment = -2;
 			break;
 		default:
 			printf("bad usage/n");
 			exit(0);
 		}
 	}
-	struct prime myNum;
-	memset(&myNum, '\0', sizeof(myNum));
-	myNum.next = 1;
-	myNum.increment = 2;
 
 
 
-
-
+	struct sigaction psa;
 	memset (&psa, '\0', sizeof(psa));
 
 	psa.sa_sigaction = &handler;
@@ -130,8 +133,8 @@ int main(int argc, char* argv[]){
 
 	while(1){
 		//printf("doing stuff here\n" );
-		next_prime(&myNum);
-		printf("next prime is %d\n", myNum.next);
+		next_prime();
+		printf("next prime is %d\n", number.next);
 		sleep(1);
 	}
 
