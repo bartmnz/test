@@ -60,22 +60,18 @@ void next_prime(){
 
 void handler(int signum, siginfo_t *siginfo, void* context){
 	siginfo +=1;
-	printf("context is: %p\n", context);
-	printf("signal is %d\n", signum);
+	if (context == NULL){}
 	switch (signum){
 		case SIGHUP:
-			printf("HERE");
 			number.next = 1;
 			next_prime();
 			fflush(stdout);
 			break;
 		case SIGUSR1:
-			printf("nope");
 			next_prime();
 			fflush(stdout);
 			break;
 		case SIGUSR2:
-			printf("not gonna do it");
 			number.increment = number.increment * -1;
 			fflush(stdout);
 			break;
@@ -89,29 +85,42 @@ int main(int argc, char* argv[]){
 	number.next = 1;
 	number.increment = 2;
 	number.max = UINT_MAX;
-	int opt;
+	int var = 0;
+	int opt, sflag, rflag, errflag;
 	while ((opt = getopt(argc, argv, "s:e:r:")) != -1){
 		switch (opt){
 		case 's':
-			printf("S option used %d\n", atoi(optarg));
-			number.next = atoi(optarg);
+			sflag = 1;
+			if (rflag == 1){
+				errflag = 1;
+			}
+			var = atoi(optarg);
+			number.next = var & 1 ? var : var + 1;
 			break;
 		case 'e':
-			printf("E option used %d\n", atoi(optarg));
-			number.max = atoi(optarg);
+			var = atoi(optarg);
+			if ( var > 2){
+				number.max = (unsigned int) var <= number.max ? (unsigned int) var : number.max;
+			}
 			break;
 		case 'r':
-			printf("R option used %d\n", atoi(optarg));
-			number.next = atoi(optarg);
+			rflag = 1;
+			if (sflag == 1){
+				errflag = 1;
+			}
+			var = atoi(optarg);
+			number.next = var & 1 ? var : var + 1;
 			number.increment = -2;
 			break;
 		default:
-			printf("bad usage/n");
+			fprintf(stderr, "ERROR: bad usage/n");
 			exit(0);
 		}
 	}
-
-
+	if ( errflag == 1){
+		fprintf(stdout, "ERROR: usage: -s and -r are mutually exclusive.");
+		exit(0);
+	}
 
 	struct sigaction psa;
 	memset (&psa, '\0', sizeof(psa));
@@ -119,7 +128,6 @@ int main(int argc, char* argv[]){
 	psa.sa_sigaction = &handler;
 
 	psa.sa_flags = SA_SIGINFO;
-	//sigaction(SIGHUP, &psa, NULL);
 
 	if(sigaction(SIGHUP, &psa, NULL) < 0){
 		printf("ERROR: 1\n");
@@ -132,9 +140,8 @@ int main(int argc, char* argv[]){
 	}
 
 	while(1){
-		//printf("doing stuff here\n" );
 		next_prime();
-		printf("next prime is %d\n", number.next);
+		fprintf(stdout, "next prime is %d\n", number.next);
 		sleep(1);
 	}
 
